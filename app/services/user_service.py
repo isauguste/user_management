@@ -199,3 +199,23 @@ class UserService:
             await session.commit()
             return True
         return False
+     @classmethod
+    async def upgrade_to_pro(cls, session: AsyncSession, target_id: UUID) -> Optional[User]:
+        """
+        Mark a user as professional and timestamp it.
+        """
+        try:
+            user = await cls.get_by_id(session, target_id)
+            if not user:
+                return None
+            if not user.is_professional:
+                user.is_professional = True
+                user.professional_status_updated_at = datetime.now(timezone.utc)
+                session.add(user)
+                await session.commit()
+                await session.refresh(user)
+            return user
+        except Exception as e:
+            logger.error(f"upgrade_to_pro error: {e}")
+            await session.rollback()
+            return None
