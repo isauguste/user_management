@@ -231,7 +231,86 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Async
         )
 
         return {"access_token": access_token, "token_type": "bearer"}
-    raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    raise HTTPException(status_code=401, detail="Incorrect email or password.") 
+
+# --- Profile: user updates their own info ---
+@router.patch(
+    "/users/me/profile",
+    response_model=UserResponse,
+    tags=["Profile"],
+    name="update_my_profile",
+)
+async def update_my_profile(
+    user_update: UserUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    me: dict = Depends(get_current_user),
+):
+    """
+    Authenticated user can update their own profile fields.
+    Accepts partial fields (nickname, first_name, last_name, bio, profile links, location, etc.).
+    """
+    data = user_update.model_dump(exclude_unset=True)
+    updated_user = await UserService.update(db, me["id"] if isinstance(me, dict) else me.id, data)
+    if not updated_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unable to update profile")
+
+    return UserResponse.model_construct(
+        id=updated_user.id,
+        nickname=updated_user.nickname,
+        first_name=updated_user.first_name,
+        last_name=updated_user.last_name,
+        bio=updated_user.bio,
+        profile_picture_url=updated_user.profile_picture_url,
+        github_profile_url=updated_user.github_profile_url,
+        linkedin_profile_url=updated_user.linkedin_profile_url,
+        role=updated_user.role,
+        email=updated_user.email,
+        last_login_at=updated_user.last_login_at,
+        created_at=updated_user.created_at,
+        updated_at=updated_user.updated_at,
+        links=create_user_links(updated_user.id, request),
+    )
+
+
+# --- Manager/Admin upgrades a user to professional ---
+@router.post(
+    "/users/{user_id}/upgrade-pro",
+    response_model=UserResponse,
+    tags=["User Management Requires (Admin or Manager Roles)"],
+    name="upgrade_user_to_pro",
+)
+async def upgrade_user_to_pro(
+    user_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["ADMIN", "MANAGER"])),
+):
+    """
+    Managers/Admins can upgrade any user to professional status.
+    """
+    updated_user = await UserService.upgrade_to_pro(db, user_id)
+    if not updated_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    return UserResponse.model_construct(
+        id=updated_user.id,
+        nickname=updated_user.nickname,
+        first_name=updated_user.first_name,
+        last_name=updated_user.last_name,
+        bio=updated_user.bio,
+        profile_picture_url=updated_user.profile_picture_url,
+        github_profile_url=updated_user.github_profile_url,
+        linkedin_profile_url=updated_user.linkedin_profile_url,
+        role=updated_user.role,
+        email=updated_user.email,
+        last_login_at=updated_user.last_login_at,
+        created_at=updated_user.created_at,
+        updated_at=updated_user.updated_at,
+        # is_professional=updated_user.is_professional,
+        links=create_user_links(updated_user.id, request),
+    )
+
 
 
 @router.get("/verify-email/{user_id}/{token}", status_code=status.HTTP_200_OK, name="verify_email", tags=["Login and Registration"])
