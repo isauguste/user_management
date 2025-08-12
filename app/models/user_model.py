@@ -59,6 +59,7 @@ class User(Base):
     first_name: Mapped[str] = Column(String(100), nullable=True)
     last_name: Mapped[str] = Column(String(100), nullable=True)
     bio: Mapped[str] = Column(String(500), nullable=True)
+    location: Mapped[str] = Column(String(255), nullable=True)
     profile_picture_url: Mapped[str] = Column(String(255), nullable=True)
     linkedin_profile_url: Mapped[str] = Column(String(255), nullable=True)
     github_profile_url: Mapped[str] = Column(String(255), nullable=True)
