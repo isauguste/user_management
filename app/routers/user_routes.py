@@ -108,6 +108,16 @@ async def update_user(user_id: UUID, user_update: UserUpdate, request: Request, 
         links=create_user_links(updated_user.id, request)
     )
 
+@router.put("/me", response_model=UserResponse)
+async def update_me(
+    user_update: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    updated = await UserService.update(db, current_user.id, user_update.model_dump(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT, name="delete_user", tags=["User Management Requires (Admin or Manager Roles)"])
 async def delete_user(user_id: UUID, db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme), current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))):
