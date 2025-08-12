@@ -199,7 +199,8 @@ class UserService:
             await session.commit()
             return True
         return False
-     @classmethod
+
+    @classmethod
     async def upgrade_to_pro(cls, session: AsyncSession, target_id: UUID) -> Optional[User]:
         """
         Mark a user as professional and timestamp it.
